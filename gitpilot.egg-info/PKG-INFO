@@ -1,0 +1,39 @@
+Metadata-Version: 2.1
+Name: gitpilot
+Version: 0.1.0
+Summary: AI-Powered Git Assistant that translates natural language to Git commands
+Home-page: https://github.com/yourusername/gitpilot
+Author: Your Name
+Author-email: your.email@example.com
+Project-URL: Bug Reports, https://github.com/yourusername/gitpilot/issues
+Project-URL: Source, https://github.com/yourusername/gitpilot
+Keywords: git ai assistant natural language cli
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Software Development :: Version Control :: Git
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.0.0
+Requires-Dist: typer>=0.9.0
+Requires-Dist: gitpython>=3.1.0
+Requires-Dist: anthropic>=0.3.0
+Requires-Dist: openai>=1.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: pytest>=7.0.0
+Requires-Dist: pytest-cov>=4.0.0
+Requires-Dist: black>=23.0.0
+Requires-Dist: flake8>=6.0.0
+Requires-Dist: mypy>=1.0.0
+
+
