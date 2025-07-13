@@ -3,9 +3,9 @@ GitPilot: AI-Powered Git Assistant
 Translates natural language commands into Git operations.
 """
 
-__version__ = "0.1.0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+__version__ = "1.0.0"
+__author__ = "Anubhav Saxena"
+__email__ = "saxenaanubhav1204@gmail.com"
 
 from .ai_engine import AIEngine
 from .cli import main
