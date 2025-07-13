@@ -49,7 +49,7 @@ class AIEngine:
     def _generate_with_gemini(self, user_input: str, context: Dict) -> Dict:
         """Generate command using Gemini"""
         prompt = self._build_prompt(user_input, context)
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(prompt)
         response_text = response.text if hasattr(response, 'text') else str(response)
         self.logger.log_ai_query(user_input, response_text, "gemini")
@@ -60,7 +60,7 @@ class AIEngine:
         prompt = self._build_prompt(user_input, context)
         
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
