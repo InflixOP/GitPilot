@@ -1,7 +1,7 @@
- click>=8.0.0
+click>=8.0.0
 typer>=0.9.0
 gitpython>=3.1.0
-anthropic>=0.3.0
+google-generativeai>=0.3.0
 openai>=1.0.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
@@ -12,3 +12,23 @@ pytest-cov>=4.0.0
 black>=23.0.0
 flake8>=6.0.0
 mypy>=1.0.0
+# Core dependencies
+click>=8.0.0
+rich>=12.0.0
+pyyaml>=6.0
+
+# AI providers
+google-generativeai>=0.3.0
+
+# Local AI model support
+torch>=2.0.0
+transformers>=4.36.0
+accelerate>=0.20.0
+tokenizers>=0.15.0
+
+# Optional: For better performance and memory efficiency
+# bitsandbytes>=0.41.0  # For 8-bit quantization
+# flash-attn>=2.0.0     # For faster attention (if supported)
+
+# Utility
+requests>=2.25.0
