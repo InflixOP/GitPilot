@@ -10,7 +10,6 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
-from rich.syntax import Syntax
 from rich.text import Text
 
 from .ai_engine import AIEngine
@@ -25,7 +24,6 @@ def load_config():
     """Load configuration from ~/.gitpilot/config.yaml"""
     config_path = os.path.expanduser("~/.gitpilot/config.yaml")
     default_config = {
-        "ai_provider": "gemini",
         "auto_confirm": False,
         "explain_by_default": False,
         "log_level": "INFO"
@@ -45,12 +43,11 @@ def load_config():
 @click.argument('query', required=False)
 @click.option('--dry-run', '-d', is_flag=True, help='Show what would be executed without running')
 @click.option('--explain', '-e', is_flag=True, help='Show detailed explanation')
-@click.option('--provider', '-p', default=None, help='AI provider (gemini/openai)')
 @click.option('--yes', '-y', is_flag=True, help='Auto-confirm destructive operations')
 @click.option('--history', '-h', is_flag=True, help='Show recent command history')
 @click.option('--version', is_flag=True, help='Show version information')
 def main(query: Optional[str], dry_run: bool, explain: bool, 
-         provider: Optional[str], yes: bool, history: bool, version: bool):
+         yes: bool, history: bool, version: bool):
     """
     GitPilot: AI-Powered Git Assistant
     
@@ -88,13 +85,8 @@ def main(query: Optional[str], dry_run: bool, explain: bool,
     if not query:
         query = click.prompt("What would you like to do with Git?", type=str)
     
-    # Initialize AI engine
-    ai_provider = provider or config.get("ai_provider", "gemini")
-    try:
-        ai_engine = AIEngine(provider=ai_provider)
-    except ValueError as e:
-        console.print(f"❌ {e}", style="red")
-        sys.exit(1)
+    # Initialize AI engine (using Gemini only)
+    ai_engine = AIEngine()
     
     # Analyze context
     context = context_analyzer.analyze_context()

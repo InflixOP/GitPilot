@@ -24,7 +24,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: click>=8.0.0
 Requires-Dist: typer>=0.9.0
 Requires-Dist: gitpython>=3.1.0
-Requires-Dist: anthropic>=0.3.0
+Requires-Dist: google-generativeai>=0.3.0
 Requires-Dist: openai>=1.0.0
 Requires-Dist: python-dotenv>=1.0.0
 Requires-Dist: loguru>=0.7.0
@@ -35,5 +35,14 @@ Requires-Dist: pytest-cov>=4.0.0
 Requires-Dist: black>=23.0.0
 Requires-Dist: flake8>=6.0.0
 Requires-Dist: mypy>=1.0.0
+Requires-Dist: click>=8.0.0
+Requires-Dist: rich>=12.0.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: google-generativeai>=0.3.0
+Requires-Dist: torch>=2.0.0
+Requires-Dist: transformers>=4.36.0
+Requires-Dist: accelerate>=0.20.0
+Requires-Dist: tokenizers>=0.15.0
+Requires-Dist: requests>=2.25.0
 
 
