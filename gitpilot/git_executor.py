@@ -75,19 +75,34 @@ class GitExecutor:
             
             success = result.returncode == 0
             
-            # Log execution
-            self.logger.log_command(
-                user_input="",  # Will be set by CLI
-                git_command=clean_command,
-                success=success,
-                output=result.stdout,
-                error=result.stderr
-            )
+            # Log execution with proper error handling
+            if success:
+                # Command succeeded - log as success
+                self.logger.log_command(
+                    user_input="",  # Will be set by CLI
+                    git_command=clean_command,
+                    success=True,
+                    output=result.stdout,
+                    error=""  # Don't treat stderr as error if command succeeded
+                )
+                
+                # If there's stderr content but command succeeded, it's just warnings
+                if result.stderr:
+                    self.logger.log_warning(f"Command warnings: {result.stderr}")
+            else:
+                # Command failed - log as error
+                self.logger.log_command(
+                    user_input="",  # Will be set by CLI
+                    git_command=clean_command,
+                    success=False,
+                    output=result.stdout,
+                    error=result.stderr
+                )
             
             return {
                 "success": success,
                 "output": result.stdout,
-                "error": result.stderr,
+                "error": result.stderr if not success else "",
                 "executed": True,
                 "warnings": all_warnings,
                 "return_code": result.returncode

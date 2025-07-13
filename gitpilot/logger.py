@@ -3,7 +3,6 @@ Logging and history management for GitPilot
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -46,8 +45,8 @@ class GitPilotLogger:
         with open(self.history_file, 'w') as f:
             json.dump(self.history, f, indent=2)
     
-    def log_command(self, user_input: str, git_command: str, 
-                   success: bool, output: str = "", error: str = ""):
+    def log_command(self, user_input: str, git_command: str,
+                    success: bool, output: str = "", error: str = ""):
         """Log a command execution"""
         entry = {
             "timestamp": datetime.now().isoformat(),
@@ -76,6 +75,10 @@ class GitPilotLogger:
     def log_error(self, error: str):
         """Log error messages"""
         logger.error(error)
+    
+    def log_warning(self, message: str):
+        """Log warning messages"""
+        logger.warning(message)
     
     def get_recent_history(self, limit: int = 10) -> List[Dict]:
         """Get recent command history"""
