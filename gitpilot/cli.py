@@ -49,18 +49,19 @@ def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history:
         show_history(logger)
         return
     if not context_analyzer.is_git_repo():
-        console.print(" [91m [1mNot a Git repository. Please run from inside a Git repository.", style="red")
+        console.print("❌ Not a Git repository. Please run from inside a Git repository.", style="red")
         sys.exit(1)
+    console.print("🚀 GitPilot is ready to help you with Git!", style="green")
     if not query:
         query = click.prompt("What would you like to do with Git?", type=str)
     ai_engine = AIEngine()
     context = context_analyzer.analyze_context()
-    with console.status(" [96mThinking..."):
+    with console.status("💭 Thinking..."):
         safe_query = query if query is not None else ""
         ai_response = ai_engine.generate_command(safe_query, context)
     display_ai_response(ai_response, explain or config.get("explain_by_default", False))
     if not ai_response.get("command"):
-        console.print(" [91mCould not generate a valid Git command.", style="red")
+        console.print("❌ Could not generate a valid Git command.", style="red")
         sys.exit(1)
     git_executor = GitExecutor()
     if dry_run:
@@ -83,7 +84,7 @@ def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history:
                 error=result.get("error", "")
             )
         else:
-            console.print("Operation cancelled.", style="yellow")
+            console.print("❌ Operation cancelled.", style="yellow")
 def display_ai_response(response: Dict, show_explanation: bool = False):
     if response.get("command"):
         command_text = Text(response["command"], style="bold cyan")
@@ -93,38 +94,40 @@ def display_ai_response(response: Dict, show_explanation: bool = False):
         if response.get("warning"):
             console.print(Panel(response["warning"], title="Warning", border_style="yellow"))
     else:
-        console.print(Panel(response.get("explanation", "No command generated"), title="Error", border_style="red"))
+        console.print(Panel(response.get("explanation", "❌ No command generated"), title="Error", border_style="red"))
 def display_execution_result(result: Dict, is_preview: bool = False):
     if is_preview:
         console.print(Panel(result["output"], title="Preview", border_style="blue"))
         if result.get("warnings"):
             for warning in result["warnings"]:
-                console.print(f"Warning: {warning}", style="yellow")
+                console.print(f"⚠️ Warning: {warning}", style="yellow")
         return
     if result["success"]:
         if result.get("output"):
             console.print(Panel(result["output"], title="Success", border_style="green"))
         else:
-            console.print("Command executed successfully", style="green")
+            console.print("✅ Command executed successfully", style="green")
     else:
         error_text = result.get("error", "Unknown error")
         console.print(Panel(error_text, title="Error", border_style="red"))
     if result.get("warnings"):
         for warning in result["warnings"]:
-            console.print(f"Warning: {warning}", style="yellow")
+            console.print(f"⚠️ Warning: {warning}", style="yellow")
 def show_history(logger: GitPilotLogger):
     history = logger.get_recent_history(10)
     if not history:
-        console.print("No command history found.", style="yellow")
+        console.print("❌ No command history found.", style="yellow")
         return
-    console.print("Recent Commands:", style="bold")
+    console.print("🔍 Recent Commands:", style="bold")
     for i, entry in enumerate(reversed(history), 1):
-        status = " [92m [1m" if entry["success"] else " [91m [1m"
+        status = "✅" if entry["success"] else "❌"
         timestamp = entry["timestamp"][:19]
-        console.print(f"\n{i}. {status}{timestamp}")
+        console.print(f"\n{i}. {status} {timestamp}")
         console.print(f"   Query: {entry['user_input']}")
         console.print(f"   Command: {entry['git_command']}")
         if entry.get("error"):
-            console.print(f"   Error: {entry['error']}", style="red")
+            console.print(f"   ❌ Error: {entry['error']}", style="red")
+        if entry.get("output"):
+            console.print(f"   💬 Output: {entry['output']}")   
 if __name__ == "__main__":
     main()
