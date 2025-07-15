@@ -1,12 +1,6 @@
-"""
-GitPilot: AI-Powered Git Assistant
-Translates natural language commands into Git operations.
-"""
-
 __version__ = "1.0.0"
 __author__ = "Anubhav Saxena"
 __email__ = "saxenaanubhav1204@gmail.com"
-
 from .ai_engine import AIEngine
 from .cli import main
 from .context_analyzer import ContextAnalyzer

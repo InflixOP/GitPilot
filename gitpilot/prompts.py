@@ -1,7 +1,3 @@
-"""
-AI Prompt templates for GitPilot
-"""
-
 SYSTEM_PROMPT = """
 You are GitPilot, an AI assistant that translates natural language to Git commands.
 
@@ -41,7 +37,6 @@ Context Information:
 - Unstaged files: {unstaged_files}
 - Remote status: {remote_status}
 """
-
 CONTEXT_PROMPT = """
 Based on the current Git repository state:
 - Branch: {branch}

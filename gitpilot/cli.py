@@ -1,7 +1,3 @@
-"""
-Main CLI interface for GitPilot
-"""
-
 import os
 import sys
 from typing import Dict, Optional
@@ -18,10 +14,7 @@ from .git_executor import GitExecutor
 from .logger import GitPilotLogger
 
 console = Console()
-
-
 def load_config():
-    """Load configuration from ~/.gitpilot/config.yaml"""
     config_path = os.path.expanduser("~/.gitpilot/config.yaml")
     default_config = {
         "auto_confirm": False,
@@ -37,8 +30,6 @@ def load_config():
     except ImportError:
         pass
     return default_config
-
-
 @click.command()
 @click.argument('query', required=False)
 @click.option('--dry-run', '-d', is_flag=True, help='Show what would be executed without running')
@@ -46,82 +37,44 @@ def load_config():
 @click.option('--yes', '-y', is_flag=True, help='Auto-confirm destructive operations')
 @click.option('--history', '-h', is_flag=True, help='Show recent command history')
 @click.option('--version', is_flag=True, help='Show version information')
-def main(query: Optional[str], dry_run: bool, explain: bool, 
-         yes: bool, history: bool, version: bool):
-    """
-    GitPilot: AI-Powered Git Assistant
-    
-    Translates natural language into Git commands.
-    
-    Examples:
-        gitpilot "create a new branch for feature login"
-        gitpilot "undo last commit but keep changes" --dry-run
-        gitpilot "show commits from last week" --explain
-    """
-    
+def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history: bool, version: bool):
     if version:
         from . import __version__
         console.print(f"GitPilot version {__version__}")
         return
-    
-    # Load configuration
     config = load_config()
-    
-    # Initialize components
     logger = GitPilotLogger()
     context_analyzer = ContextAnalyzer()
-    
-    # Show history if requested
     if history:
         show_history(logger)
         return
-    
-    # Check if we're in a Git repository
     if not context_analyzer.is_git_repo():
-        console.print("❌ Not a Git repository. Please run from inside a Git repository.", style="red")
+        console.print(" [91m [1mNot a Git repository. Please run from inside a Git repository.", style="red")
         sys.exit(1)
-    
-    # Get query interactively if not provided
     if not query:
         query = click.prompt("What would you like to do with Git?", type=str)
-    
-    # Initialize AI engine (using Gemini only)
     ai_engine = AIEngine()
-    
-    # Analyze context
     context = context_analyzer.analyze_context()
-    
-    # Generate command
-    with console.status("🤖 Thinking..."):
+    with console.status(" [96mThinking..."):
         safe_query = query if query is not None else ""
         ai_response = ai_engine.generate_command(safe_query, context)
-    
-    # Display results
     display_ai_response(ai_response, explain or config.get("explain_by_default", False))
-    
     if not ai_response.get("command"):
-        console.print("❌ Could not generate a valid Git command.", style="red")
+        console.print(" [91mCould not generate a valid Git command.", style="red")
         sys.exit(1)
-    
-    # Execute command
     git_executor = GitExecutor()
-    
     if dry_run:
         result = git_executor.preview_command(ai_response["command"])
         display_execution_result(result, is_preview=True)
     else:
-        # Check for confirmation
         should_execute = True
         if git_executor.is_destructive_command(ai_response["command"]) and not yes:
             should_execute = Confirm.ask(
                 f"Execute potentially destructive command: {ai_response['command']}?"
             )
-        
         if should_execute:
             result = git_executor.execute(ai_response["command"], auto_confirm=yes)
             display_execution_result(result)
-            
-            # Log the complete interaction
             logger.log_command(
                 user_input=safe_query,
                 git_command=ai_response["command"],
@@ -131,72 +84,47 @@ def main(query: Optional[str], dry_run: bool, explain: bool,
             )
         else:
             console.print("Operation cancelled.", style="yellow")
-
-
 def display_ai_response(response: Dict, show_explanation: bool = False):
-    """Display AI response with formatting"""
     if response.get("command"):
-        # Show command
         command_text = Text(response["command"], style="bold cyan")
-        console.print(Panel(command_text, title="🎯 Generated Command", border_style="cyan"))
-        
-        # Show explanation if requested
+        console.print(Panel(command_text, title="Generated Command", border_style="cyan"))
         if show_explanation and response.get("explanation"):
-            console.print(Panel(response["explanation"], title="💡 Explanation", border_style="blue"))
-        
-        # Show warnings
+            console.print(Panel(response["explanation"], title="Explanation", border_style="blue"))
         if response.get("warning"):
-            console.print(Panel(response["warning"], title="⚠️  Warning", border_style="yellow"))
+            console.print(Panel(response["warning"], title="Warning", border_style="yellow"))
     else:
-        console.print(Panel(response.get("explanation", "No command generated"), 
-                          title="❌ Error", border_style="red"))
-
-
+        console.print(Panel(response.get("explanation", "No command generated"), title="Error", border_style="red"))
 def display_execution_result(result: Dict, is_preview: bool = False):
-    """Display command execution result"""
     if is_preview:
-        console.print(Panel(result["output"], title="👀 Preview", border_style="blue"))
+        console.print(Panel(result["output"], title="Preview", border_style="blue"))
         if result.get("warnings"):
             for warning in result["warnings"]:
-                console.print(f"⚠️  {warning}", style="yellow")
+                console.print(f"Warning: {warning}", style="yellow")
         return
-    
     if result["success"]:
         if result.get("output"):
-            console.print(Panel(result["output"], title="✅ Success", border_style="green"))
+            console.print(Panel(result["output"], title="Success", border_style="green"))
         else:
-            console.print("✅ Command executed successfully", style="green")
+            console.print("Command executed successfully", style="green")
     else:
         error_text = result.get("error", "Unknown error")
-        console.print(Panel(error_text, title="❌ Error", border_style="red"))
-    
-    # Show warnings
+        console.print(Panel(error_text, title="Error", border_style="red"))
     if result.get("warnings"):
         for warning in result["warnings"]:
-            console.print(f"⚠️  {warning}", style="yellow")
-
-
+            console.print(f"Warning: {warning}", style="yellow")
 def show_history(logger: GitPilotLogger):
-    """Show recent command history"""
     history = logger.get_recent_history(10)
-    
     if not history:
         console.print("No command history found.", style="yellow")
         return
-    
-    console.print("\n📜 Recent Commands:", style="bold")
-    
+    console.print("Recent Commands:", style="bold")
     for i, entry in enumerate(reversed(history), 1):
-        status = "✅" if entry["success"] else "❌"
-        timestamp = entry["timestamp"][:19]  # Remove microseconds
-        
-        console.print(f"\n{i}. {status} {timestamp}")
+        status = " [92m [1m" if entry["success"] else " [91m [1m"
+        timestamp = entry["timestamp"][:19]
+        console.print(f"\n{i}. {status}{timestamp}")
         console.print(f"   Query: {entry['user_input']}")
         console.print(f"   Command: {entry['git_command']}")
-        
         if entry.get("error"):
             console.print(f"   Error: {entry['error']}", style="red")
-
-
 if __name__ == "__main__":
     main()
