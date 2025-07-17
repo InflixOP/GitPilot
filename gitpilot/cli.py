@@ -5,7 +5,8 @@ from typing import Dict, Optional
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
 from rich.text import Text
 
 from .ai_engine import AIEngine
@@ -14,12 +15,15 @@ from .git_executor import GitExecutor
 from .logger import GitPilotLogger
 
 console = Console()
+
 def load_config():
+    """Load configuration from config file"""
     config_path = os.path.expanduser("~/.gitpilot/config.yaml")
     default_config = {
         "auto_confirm": False,
         "explain_by_default": False,
-        "log_level": "INFO"
+        "log_level": "INFO",
+        "default_model": "1"  # Default to Gemini
     }
     try:
         import yaml
@@ -30,6 +34,40 @@ def load_config():
     except ImportError:
         pass
     return default_config
+
+def display_model_selection(ai_engine: AIEngine) -> str:
+    """Display available models and get user selection"""
+    models = ai_engine.get_available_models()
+    
+    # Create a table for model selection
+    table = Table(title="🤖 Available AI Models", show_header=True, header_style="bold magenta")
+    table.add_column("Choice", style="cyan", width=8)
+    table.add_column("Model", style="green")
+    table.add_column("Provider", style="blue")
+    
+    for choice, model_info in models.items():
+        provider_emoji = "🔸" if model_info["provider"] == "gemini" else "⚡"
+        table.add_row(
+            choice, 
+            model_info["name"], 
+            f"{provider_emoji} {model_info['provider'].title()}"
+        )
+    
+    console.print(table)
+    
+    # Get user choice
+    while True:
+        choice = Prompt.ask(
+            "Select a model", 
+            choices=list(models.keys()), 
+            default="1"
+        )
+        if choice in models:
+            selected_model = models[choice]
+            console.print(f"✅ Selected: {selected_model['name']}", style="green")
+            return choice
+        console.print("❌ Invalid choice. Please try again.", style="red")
+
 @click.command()
 @click.argument('query', required=False)
 @click.option('--dry-run', '-d', is_flag=True, help='Show what would be executed without running')
@@ -37,33 +75,81 @@ def load_config():
 @click.option('--yes', '-y', is_flag=True, help='Auto-confirm destructive operations')
 @click.option('--history', '-h', is_flag=True, help='Show recent command history')
 @click.option('--version', is_flag=True, help='Show version information')
-def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history: bool, version: bool):
+@click.option('--model', '-m', type=str, help='Select AI model (1-4)')
+@click.option('--skip-model-selection', is_flag=True, help='Skip model selection and use default')
+def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history: bool, 
+         version: bool, model: Optional[str], skip_model_selection: bool):
+    """GitPilot - AI-powered Git assistant"""
+    
     if version:
         from . import __version__
         console.print(f"GitPilot version {__version__}")
         return
+
+    # Load configuration
     config = load_config()
     logger = GitPilotLogger()
     context_analyzer = ContextAnalyzer()
+
+    # Show history if requested
     if history:
         show_history(logger)
         return
+
+    # Check if we're in a Git repository
     if not context_analyzer.is_git_repo():
         console.print("❌ Not a Git repository. Please run from inside a Git repository.", style="red")
         sys.exit(1)
+
+    # Welcome message
     console.print("🚀 GitPilot is ready to help you with Git!", style="green")
-    if not query:
-        query = click.prompt("What would you like to do with Git?", type=str)
+    
+    # Initialize AI engine
     ai_engine = AIEngine()
+    
+    # Model selection
+    selected_model = None
+    if model:
+        # Model specified via command line
+        if model in ai_engine.get_available_models():
+            selected_model = model
+            model_name = ai_engine.get_available_models()[model]["name"]
+            console.print(f"🤖 Using model: {model_name}", style="blue")
+        else:
+            console.print(f"❌ Invalid model choice: {model}", style="red")
+            sys.exit(1)
+    elif skip_model_selection:
+        # Use default model
+        selected_model = config.get("default_model", "1")
+        model_name = ai_engine.get_available_models()[selected_model]["name"]
+        console.print(f"🤖 Using default model: {model_name}", style="blue")
+    else:
+        # Interactive model selection
+        selected_model = display_model_selection(ai_engine)
+    
+    # Get user query
+    if not query:
+        query = click.prompt("\n💬 What would you like to do with Git?", type=str)
+
+    # Analyze Git context
     context = context_analyzer.analyze_context()
+
+    # Generate command using selected model
     with console.status("💭 Thinking..."):
         safe_query = query if query is not None else ""
-        ai_response = ai_engine.generate_command(safe_query, context)
+        ai_response = ai_engine.generate_command(safe_query, context, selected_model)
+
+    # Display AI response
     display_ai_response(ai_response, explain or config.get("explain_by_default", False))
+
+    # Check if command was generated
     if not ai_response.get("command"):
         console.print("❌ Could not generate a valid Git command.", style="red")
         sys.exit(1)
+
+    # Execute command
     git_executor = GitExecutor()
+    
     if dry_run:
         result = git_executor.preview_command(ai_response["command"])
         display_execution_result(result, is_preview=True)
@@ -73,9 +159,12 @@ def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history:
             should_execute = Confirm.ask(
                 f"Execute potentially destructive command: {ai_response['command']}?"
             )
+        
         if should_execute:
             result = git_executor.execute(ai_response["command"], auto_confirm=yes)
             display_execution_result(result)
+            
+            # Log the command
             logger.log_command(
                 user_input=safe_query,
                 git_command=ai_response["command"],
@@ -85,23 +174,34 @@ def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history:
             )
         else:
             console.print("❌ Operation cancelled.", style="yellow")
+
 def display_ai_response(response: Dict, show_explanation: bool = False):
+    """Display AI response with formatting"""
     if response.get("command"):
         command_text = Text(response["command"], style="bold cyan")
         console.print(Panel(command_text, title="Generated Command", border_style="cyan"))
+        
         if show_explanation and response.get("explanation"):
             console.print(Panel(response["explanation"], title="Explanation", border_style="blue"))
+        
         if response.get("warning"):
             console.print(Panel(response["warning"], title="Warning", border_style="yellow"))
     else:
-        console.print(Panel(response.get("explanation", "❌ No command generated"), title="Error", border_style="red"))
+        console.print(Panel(
+            response.get("explanation", "❌ No command generated"), 
+            title="Error", 
+            border_style="red"
+        ))
+
 def display_execution_result(result: Dict, is_preview: bool = False):
+    """Display command execution result"""
     if is_preview:
         console.print(Panel(result["output"], title="Preview", border_style="blue"))
         if result.get("warnings"):
             for warning in result["warnings"]:
                 console.print(f"⚠️ Warning: {warning}", style="yellow")
         return
+
     if result["success"]:
         if result.get("output"):
             console.print(Panel(result["output"], title="Success", border_style="green"))
@@ -110,14 +210,18 @@ def display_execution_result(result: Dict, is_preview: bool = False):
     else:
         error_text = result.get("error", "Unknown error")
         console.print(Panel(error_text, title="Error", border_style="red"))
+
     if result.get("warnings"):
         for warning in result["warnings"]:
             console.print(f"⚠️ Warning: {warning}", style="yellow")
+
 def show_history(logger: GitPilotLogger):
+    """Show recent command history"""
     history = logger.get_recent_history(10)
     if not history:
         console.print("❌ No command history found.", style="yellow")
         return
+
     console.print("🔍 Recent Commands:", style="bold")
     for i, entry in enumerate(reversed(history), 1):
         status = "✅" if entry["success"] else "❌"
@@ -128,6 +232,7 @@ def show_history(logger: GitPilotLogger):
         if entry.get("error"):
             console.print(f"   ❌ Error: {entry['error']}", style="red")
         if entry.get("output"):
-            console.print(f"   💬 Output: {entry['output']}")   
+            console.print(f"   💬 Output: {entry['output']}")
+
 if __name__ == "__main__":
     main()
