@@ -7,7 +7,11 @@
 ### 🧠 AI-Powered Command Generation
 - **Natural Language Processing**: Converts plain English requests into precise Git commands
 - **Context-Aware Intelligence**: Analyzes your repository state to provide relevant suggestions
-- **Multi-Model Support**: Powered by Google's Gemini AI for accurate command generation
+- **Multi-Model Support**: Choose from multiple AI providers and models:
+  - **Google Gemini**: Gemini 2.0 Flash for fast, accurate responses
+  - **Groq**: Lightning-fast inference with Llama 3.1 8B Instant, Llama 3.3 70B Versatile
+  - **DeepSeek**: Advanced reasoning with R1 Distill Llama 70B
+- **Intelligent Response Parsing**: Enhanced parsing handles various response formats from different AI models
 
 ### 🛡️ Safety & Security
 - **Destructive Operation Detection**: Identifies potentially dangerous commands and requires confirmation
