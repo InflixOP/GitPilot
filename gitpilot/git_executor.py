@@ -113,6 +113,6 @@ class GitExecutor:
         return self.execute(command, dry_run=True)
     def is_destructive_command(self, command: str) -> bool:
         return any(
-            destructive_cmd in command.lower() 
+            destructive_cmd in command.lower()
             for destructive_cmd in self.destructive_commands.keys()
         )

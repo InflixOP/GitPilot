@@ -38,7 +38,7 @@ GitPilot is built with a modular architecture:
 
 ```
 ├── cli.py              # Command-line interface and user interaction
-├── ai_engine.py        # AI model integration (Gemini)
+├── ai_engine.py        # Multi-model AI integration (Gemini, Groq, DeepSeek)
 ├── context_analyzer.py # Git repository state analysis
 ├── git_executor.py     # Safe Git command execution
 ├── logger.py          # Logging and command history
@@ -48,7 +48,10 @@ GitPilot is built with a modular architecture:
 ### Core Components
 
 1. **CLI Interface**: Rich terminal interface with colorized output and interactive prompts
-2. **AI Engine**: Integrates with Google's Gemini AI for natural language processing
+2. **AI Engine**: Multi-provider AI integration supporting:
+   - Google Gemini (gemini-2.0-flash)
+   - Groq (llama-3.1-8b-instant, llama-3.3-70b-versatile)
+   - DeepSeek (deepseek-r1-distill-llama-70b)
 3. **Context Analyzer**: Analyzes Git repository state and provides contextual information
 4. **Git Executor**: Safely executes Git commands with validation and safety checks
 5. **Logger**: Tracks command history and provides debugging information
@@ -58,7 +61,10 @@ GitPilot is built with a modular architecture:
 ### Prerequisites
 - Python 3.8 or higher
 - Git installed and configured
-- Google Gemini API key (set as `GEMINI_API_KEY` environment variable)
+- At least one AI provider API key:
+  - Google Gemini API key (set as `GEMINI_API_KEY` environment variable)
+  - Groq API key (set as `GROQ_API_KEY` environment variable) - for Groq models
+  - Both keys can be used simultaneously for maximum flexibility
 
 ### From PyPI (Recommended)
 ```bash
@@ -81,9 +87,13 @@ pip install -e .[dev]
 
 ## 🚀 Quick Start
 
-1. **Set up your API key**:
+1. **Set up your API keys**:
    ```bash
-   export GEMINI_API_KEY="your-api-key-here"
+   # For Google Gemini (default)
+   export GEMINI_API_KEY="your-gemini-api-key"
+   
+   # For Groq models (optional)
+   export GROQ_API_KEY="your-groq-api-key"
    ```
 
 2. **Navigate to a Git repository**:
@@ -93,7 +103,12 @@ pip install -e .[dev]
 
 3. **Start using GitPilot**:
    ```bash
+   # Use default model (Gemini)
    gitpilot "create a new branch for user authentication"
+   
+   # Or select a specific model
+   gitpilot --model 2 "show me the current status"  # Groq Llama 3.1 8B
+   gitpilot --model 3 "commit all changes"          # Groq Llama 3.3 70B
    ```
 
 ## 📋 Usage Examples
@@ -158,6 +173,8 @@ gitpilot [OPTIONS] [QUERY]
 - `--yes, -y`: Auto-confirm destructive operations
 - `--history, -h`: Show recent command history
 - `--version`: Show version information
+- `--model, -m`: Select AI model (1: Gemini, 2: Llama 3.1 8B, 3: Llama 3.3 70B, 4: DeepSeek R1)
+- `--skip-model-selection`: Skip interactive model selection and use default
 
 ### Examples with Options
 ```bash
@@ -172,6 +189,14 @@ gitpilot "force push to remote" --yes
 
 # View command history
 gitpilot --history
+
+# Use specific AI models
+gitpilot --model 2 "show me recent commits"        # Groq Llama 3.1 8B
+gitpilot --model 3 "create a hotfix branch"         # Groq Llama 3.3 70B
+gitpilot --model 4 "help me resolve merge conflicts" # DeepSeek R1
+
+# Skip model selection for automation
+gitpilot --skip-model-selection "add all files"
 ```
 
 ## ⚙️ Configuration
@@ -191,7 +216,8 @@ log_level: INFO
 ```
 
 ### Environment Variables
-- `GEMINI_API_KEY`: Your Google Gemini API key (required)
+- `GEMINI_API_KEY`: Your Google Gemini API key (required for Gemini models)
+- `GROQ_API_KEY`: Your Groq API key (required for Groq models)
 - `GITPILOT_LOG_LEVEL`: Override log level (optional)
 
 ## 🔒 Safety Features
