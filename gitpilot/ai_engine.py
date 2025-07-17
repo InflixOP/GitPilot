@@ -71,7 +71,7 @@ class AIEngine:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are GitPilot, an AI assistant that converts natural language to Git commands. Always respond with a JSON object containing 'command', 'explanation', and optionally 'warning' fields. The command should be a valid Git command or null if no command can be generated."
+                    "content": "You are GitPilot, an AI assistant that converts natural language to Git commands. CRITICAL: Always respond with ONLY a valid JSON object in this exact format: {\"command\": \"git ...\", \"explanation\": \"...\", \"warning\": \"...\" or null}. The command should be a valid Git command or null if no command can be generated. Do not include any text before or after the JSON object."
                 },
                 {
                     "role": "user",
@@ -120,25 +120,74 @@ class AIEngine:
 
     def _parse_ai_response(self, response: str) -> Dict:
         """Parse AI response into structured format"""
+        import re
+        
         try:
-            # Try to parse as JSON first
-            if response.strip().startswith("{"):
-                return json.loads(response)
+            # Try to parse as JSON first - handle various JSON formats
+            response_clean = response.strip()
             
-            # Fallback to text parsing
-            lines = response.strip().split("\n")
+            # Look for JSON object in the response
+            json_match = re.search(r'{[^}]*"command"[^}]*}', response_clean, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+            
+            # Try direct JSON parsing if response starts with {
+            if response_clean.startswith("{"):
+                try:
+                    return json.loads(response_clean)
+                except json.JSONDecodeError:
+                    pass
+            
+            # Enhanced text parsing for various formats
+            lines = response_clean.split("\n")
             command = None
             explanation = ""
             warning = None
             
             for line in lines:
                 line = line.strip()
-                if line.startswith("git "):
-                    command = line
-                elif line.startswith("Warning:") or line.startswith("Note:"):
+                
+                # Look for git commands in various formats
+                if not command:
+                    # Direct git command
+                    if line.startswith("git "):
+                        command = line
+                    # Command in backticks
+                    elif "`git " in line:
+                        git_match = re.search(r'`(git [^`]+)`', line)
+                        if git_match:
+                            command = git_match.group(1)
+                    # Command in code blocks
+                    elif line.startswith("```") and "git " in line:
+                        git_match = re.search(r'git [^\n]+', line)
+                        if git_match:
+                            command = git_match.group()
+                    # Command after colon or similar
+                    elif ":" in line and "git " in line:
+                        git_match = re.search(r'git [^\n]+', line)
+                        if git_match:
+                            command = git_match.group()
+                
+                # Look for warnings
+                if line.startswith(("Warning:", "Note:", "⚠️", "WARNING:")):
                     warning = line
-                elif line and not command:
-                    explanation += line + " "
+                elif "warning" in line.lower() and not warning:
+                    warning = line
+                
+                # Collect explanation (avoid code blocks and commands)
+                elif line and not command and not line.startswith(("```", "`", "Warning:", "Note:")):
+                    if "git " not in line:  # Don't include lines with git commands in explanation
+                        explanation += line + " "
+            
+            # Clean up the command if found
+            if command:
+                command = command.strip().strip('`').strip()
+                # Ensure it starts with git
+                if not command.startswith("git "):
+                    command = "git " + command
             
             return {
                 "command": command,
@@ -146,7 +195,9 @@ class AIEngine:
                 "warning": warning
             }
             
-        except json.JSONDecodeError:
+        except Exception as e:
+            self.logger.log_error(f"Error parsing AI response: {str(e)}")
+            self.logger.log_error(f"Raw response: {response[:200]}...")
             return {
                 "command": None,
                 "explanation": response,
