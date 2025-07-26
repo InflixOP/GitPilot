@@ -85,6 +85,56 @@ cd gitpilot
 pip install -e .[dev]
 ```
 
+## 🎨 VS Code Extension
+
+**GitPilot is also available as a VS Code extension!** Get the same AI-powered Git assistance directly integrated into your favorite editor.
+
+### 🚀 Install from VS Code Marketplace
+
+#### Method 1: VS Code Extensions Tab
+1. Open VS Code
+2. Go to the Extensions view (`Ctrl+Shift+X`)
+3. Search for **"GitPilot"**
+4. Click **"Install"** on the GitPilot - AI Git Assistant extension
+
+#### Method 2: Direct Link
+**[Install GitPilot Extension](https://marketplace.visualstudio.com/items?itemName=InflixOP.gitpilot)**
+
+#### Method 3: Command Line
+```bash
+code --install-extension InflixOP.gitpilot
+```
+
+### ✨ VS Code Extension Features
+- **🤖 AI-Powered Panel**: Beautiful integrated sidebar panel
+- **📋 Command Palette Integration**: Access via `Ctrl+Shift+P`
+- **🎯 Context Menu**: Right-click integration in Explorer
+- **⚙️ Settings Integration**: Configure API keys in VS Code settings
+- **🔄 Real-time Repository Status**: Live Git status display
+- **🎨 VS Code Theming**: Matches your VS Code theme perfectly
+
+### 🛠️ VS Code Extension Setup
+1. **Install the extension** (see methods above)
+2. **Configure API keys**:
+   - Go to VS Code Settings (`Ctrl+,`)
+   - Search for "GitPilot"
+   - Add your Gemini or Groq API key
+3. **Start using**:
+   - Click the robot icon 🤖 in the Activity Bar
+   - Or use `Ctrl+Shift+P` → "GitPilot: Execute Command"
+
+### 💬 VS Code Extension Usage
+```
+"create a new branch for user authentication"
+→ git checkout -b feature/user-authentication
+
+"commit all changes with message 'Add login functionality'"
+→ git add . && git commit -m "Add login functionality"
+
+"show commits from last week"
+→ git log --since="1 week ago" --oneline
+```
+
 ## 🚀 Quick Start
 
 1. **Set up your API keys**:
