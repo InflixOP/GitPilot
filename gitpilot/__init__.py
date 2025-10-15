@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Anubhav Saxena"
 __email__ = "saxenaanubhav1204@gmail.com"
 from .ai_engine import AIEngine

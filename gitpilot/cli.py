@@ -71,7 +71,7 @@ def display_model_selection(ai_engine: AIEngine) -> str:
             return choice
         console.print("❌ Invalid choice. Please try again.", style="red")
 
-@click.command()
+@click.group(invoke_without_command=True)
 @click.argument('query', required=False)
 @click.option('--dry-run', '-d', is_flag=True, help='Show what would be executed without running')
 @click.option('--explain', '-e', is_flag=True, help='Show detailed explanation')
@@ -80,13 +80,18 @@ def display_model_selection(ai_engine: AIEngine) -> str:
 @click.option('--version', is_flag=True, help='Show version information')
 @click.option('--model', '-m', type=str, help='Select AI model (1-4)')
 @click.option('--skip-model-selection', is_flag=True, help='Skip model selection and use default')
-def main(query: Optional[str], dry_run: bool, explain: bool, yes: bool, history: bool, 
+@click.pass_context
+def main(ctx: click.Context, query: Optional[str], dry_run: bool, explain: bool, yes: bool, history: bool, 
          version: bool, model: Optional[str], skip_model_selection: bool):
     """GitPilot - AI-powered Git assistant"""
     
     if version:
         from . import __version__
         console.print(f"GitPilot version {__version__}")
+        return
+
+    # If a subcommand was invoked, let Click handle it
+    if ctx.invoked_subcommand is not None:
         return
 
     config = load_config()
@@ -221,6 +226,392 @@ def show_history(logger: GitPilotLogger):
             console.print(f"   ❌ Error: {entry['error']}", style="red")
         if entry.get("output"):
             console.print(f"   💬 Output: {entry['output']}")
+
+@main.command()
+@click.option('--format', type=click.Choice(['text', 'json']), default='text', help='Output format')
+@click.option('--detailed', is_flag=True, help='Show detailed health analysis')
+@click.option('--model', '-m', type=str, help='AI model for analysis (1-4)')
+def health(format: str, detailed: bool, model: Optional[str]):
+    """Analyze repository health with AI-powered insights"""
+    context_analyzer = ContextAnalyzer()
+    if not context_analyzer.is_git_repo():
+        console.print("❌ Not a Git repository.", style="red")
+        sys.exit(1)
+    
+    health_monitor = RepositoryHealthMonitor()
+    
+    with console.status("🔍 Analyzing repository health..."):
+        if detailed and model:
+            ai_engine = AIEngine()
+            if model not in ai_engine.get_available_models():
+                console.print(f"❌ Invalid model choice: {model}", style="red")
+                sys.exit(1)
+            report = health_monitor.get_comprehensive_health_report(ai_engine, model)
+        else:
+            report = health_monitor.get_comprehensive_health_report()
+    
+    if format == 'json':
+        console.print(json.dumps(report, indent=2))
+    else:
+        display_health_report(report)
+
+@main.command()
+@click.argument('search_query')
+@click.option('--limit', default=50, help='Maximum number of commits to search')
+@click.option('--model', '-m', type=str, help='AI model for search (1-4)')
+def search(search_query: str, limit: int, model: Optional[str]):
+    """Search commit history using natural language"""
+    context_analyzer = ContextAnalyzer()
+    if not context_analyzer.is_git_repo():
+        console.print("❌ Not a Git repository.", style="red")
+        sys.exit(1)
+    
+    ai_engine = AIEngine()
+    selected_model = model or "1"
+    
+    if selected_model not in ai_engine.get_available_models():
+        console.print(f"❌ Invalid model choice: {selected_model}", style="red")
+        sys.exit(1)
+    
+    with console.status(f"🔍 Searching for: {search_query}..."):
+        commit_history = context_analyzer.get_commit_history_for_search(limit)
+        if not commit_history:
+            console.print("❌ No commit history found.", style="red")
+            sys.exit(1)
+        
+        results = ai_engine.semantic_commit_search(search_query, commit_history, selected_model)
+    
+    display_search_results(results, search_query)
+
+@main.command()
+@click.option('--max-commits', default=20, help='Maximum commits to display')
+@click.option('--format', type=click.Choice(['tree', 'table', 'json']), default='tree', help='Display format')
+def graph(max_commits: int, format: str):
+    """Display visual Git commit graph"""
+    context_analyzer = ContextAnalyzer()
+    if not context_analyzer.is_git_repo():
+        console.print("❌ Not a Git repository.", style="red")
+        sys.exit(1)
+    
+    with console.status("📊 Generating Git graph..."):
+        graph_data = context_analyzer.get_git_graph_data(max_commits)
+    
+    if "error" in graph_data:
+        console.print(f"❌ {graph_data['error']}", style="red")
+        sys.exit(1)
+    
+    if format == 'json':
+        console.print(json.dumps(graph_data, indent=2))
+    elif format == 'table':
+        display_graph_table(graph_data)
+    else:
+        display_graph_tree(graph_data)
+
+@main.command()
+@click.option('--model', '-m', type=str, help='AI model for conflict resolution (1-4)')
+def conflicts(model: Optional[str]):
+    """Analyze and get AI assistance for merge conflicts"""
+    context_analyzer = ContextAnalyzer()
+    if not context_analyzer.is_git_repo():
+        console.print("❌ Not a Git repository.", style="red")
+        sys.exit(1)
+    
+    with console.status("🔍 Checking for conflicts..."):
+        conflict_info = context_analyzer.detect_merge_conflicts()
+    
+    if not conflict_info.get("has_conflicts"):
+        console.print("✅ No merge conflicts detected.", style="green")
+        return
+    
+    display_conflict_info(conflict_info)
+    
+    if model and conflict_info.get("conflicted_files"):
+        ai_engine = AIEngine()
+        if model not in ai_engine.get_available_models():
+            console.print(f"❌ Invalid model choice: {model}", style="red")
+            sys.exit(1)
+        
+        # Get conflict content from first conflicted file for AI analysis
+        first_file = conflict_info["conflicted_files"][0]["file"]
+        try:
+            with open(first_file, 'r', encoding='utf-8', errors='ignore') as f:
+                conflict_content = f.read()
+            
+            with console.status("🤖 Analyzing conflicts with AI..."):
+                context = context_analyzer.analyze_context()
+                resolution = ai_engine.resolve_merge_conflict(conflict_content, context, model)
+            
+            display_conflict_resolution(resolution)
+        except Exception as e:
+            console.print(f"❌ Error reading conflict file: {str(e)}", style="red")
+
+@main.command()
+@click.option('--security', is_flag=True, help='Focus on security analysis')
+@click.option('--performance', is_flag=True, help='Focus on performance metrics')
+def analyze(security: bool, performance: bool):
+    """Advanced repository analysis"""
+    context_analyzer = ContextAnalyzer()
+    if not context_analyzer.is_git_repo():
+        console.print("❌ Not a Git repository.", style="red")
+        sys.exit(1)
+    
+    health_monitor = RepositoryHealthMonitor()
+    
+    if security:
+        with console.status("🔒 Performing security analysis..."):
+            security_results = health_monitor.get_security_scan_results()
+        display_security_results(security_results)
+    elif performance:
+        with console.status("⚡ Analyzing performance metrics..."):
+            perf_results = health_monitor.get_performance_metrics()
+        display_performance_results(perf_results)
+    else:
+        console.print("Please specify --security or --performance flag", style="yellow")
+        console.print("Usage: gitpilot analyze --security or gitpilot analyze --performance")
+
+def display_health_report(report: Dict):
+    """Display formatted health report"""
+    if "error" in report:
+        console.print(f"❌ {report['error']}", style="red")
+        return
+    
+    # Health scores
+    scores = report.get("scores", {})
+    overall_score = scores.get("overall_score", 0)
+    
+    # Health indicator
+    if overall_score >= 90:
+        health_emoji = "🟢"
+        health_color = "green"
+    elif overall_score >= 75:
+        health_emoji = "🟡"
+        health_color = "yellow"
+    else:
+        health_emoji = "🔴"
+        health_color = "red"
+    
+    console.print(Panel(
+        f"{health_emoji} Overall Health Score: {overall_score}/100",
+        title="Repository Health",
+        border_style=health_color
+    ))
+    
+    # Detailed scores
+    if scores:
+        table = Table(title="Detailed Scores")
+        table.add_column("Category", style="cyan")
+        table.add_column("Score", style="green")
+        table.add_column("Status")
+        
+        score_items = [
+            ("Size", scores.get("size_score", 0)),
+            ("Activity", scores.get("activity_score", 0)),
+            ("Security", scores.get("security_score", 0)),
+            ("Performance", scores.get("performance_score", 0))
+        ]
+        
+        for category, score in score_items:
+            status = "✅ Good" if score >= 80 else "⚠️ Needs attention" if score >= 60 else "❌ Poor"
+            table.add_row(category, f"{score}/100", status)
+        
+        console.print(table)
+    
+    # AI Analysis if available
+    ai_analysis = report.get("ai_analysis", {})
+    if ai_analysis.get("summary"):
+        console.print(Panel(
+            ai_analysis["summary"],
+            title="AI Analysis",
+            border_style="blue"
+        ))
+    
+    # Recommendations
+    recommendations = ai_analysis.get("recommendations", [])
+    if recommendations:
+        console.print("\n🔧 Recommendations:", style="bold")
+        for i, rec in enumerate(recommendations[:5], 1):
+            console.print(f"{i}. {rec}")
+
+def display_search_results(results: Dict, query: str):
+    """Display search results"""
+    console.print(f"🔍 Search results for: '{query}'", style="bold")
+    
+    matches = results.get("matches", [])
+    if not matches:
+        console.print("❌ No matches found.", style="yellow")
+        return
+    
+    for i, match in enumerate(matches[:10], 1):
+        relevance = match.get("relevance_score", 0)
+        relevance_bar = "█" * int(relevance * 10) + "░" * (10 - int(relevance * 10))
+        
+        console.print(f"\n{i}. [{match.get('commit_sha', 'unknown')}] {match.get('message', 'No message')}")
+        console.print(f"   Relevance: {relevance_bar} ({relevance:.2f})")
+        if match.get("explanation"):
+            console.print(f"   Match: {match['explanation']}", style="dim")
+
+def display_graph_tree(graph_data: Dict):
+    """Display Git graph as a tree"""
+    tree = Tree("📊 Git Commit Graph")
+    
+    current_branch = graph_data.get("current_branch", "unknown")
+    branches = graph_data.get("branches", [])
+    commits = graph_data.get("commits", [])
+    
+    # Add branch information
+    branches_node = tree.add("🌳 Branches")
+    for branch in branches[:10]:  # Limit display
+        branch_style = "bold green" if branch.get("is_active") else "dim"
+        branch_name = branch.get("name", "unknown")
+        if branch.get("is_active"):
+            branch_name += " (current)"
+        branches_node.add(f"{branch_name}", style=branch_style)
+    
+    # Add recent commits
+    commits_node = tree.add("📝 Recent Commits")
+    for commit in commits[:10]:  # Show recent 10
+        sha = commit.get("sha", "unknown")
+        message = commit.get("message", "No message")
+        author = commit.get("author", "Unknown")
+        is_merge = commit.get("is_merge", False)
+        
+        commit_icon = "🔀" if is_merge else "📝"
+        commits_node.add(f"{commit_icon} [{sha}] {message[:50]} - {author}")
+    
+    console.print(tree)
+
+def display_graph_table(graph_data: Dict):
+    """Display Git graph as a table"""
+    commits = graph_data.get("commits", [])
+    
+    table = Table(title="Git Commit History")
+    table.add_column("SHA", style="cyan", width=8)
+    table.add_column("Message", style="white")
+    table.add_column("Author", style="green")
+    table.add_column("Type", style="yellow")
+    
+    for commit in commits[:20]:  # Show recent 20
+        sha = commit.get("sha", "unknown")
+        message = commit.get("message", "No message")
+        author = commit.get("author", "Unknown")
+        commit_type = "Merge" if commit.get("is_merge") else "Commit"
+        
+        # Truncate long messages
+        if len(message) > 60:
+            message = message[:57] + "..."
+        
+        table.add_row(sha, message, author, commit_type)
+    
+    console.print(table)
+
+def display_conflict_info(conflict_info: Dict):
+    """Display conflict information"""
+    console.print("🔥 Merge Conflicts Detected", style="bold red")
+    
+    conflicted_files = conflict_info.get("conflicted_files", [])
+    merge_branch = conflict_info.get("merge_branch")
+    
+    if merge_branch:
+        console.print(f"Merging from branch: {merge_branch}", style="yellow")
+    
+    table = Table(title="Conflicted Files")
+    table.add_column("File", style="cyan")
+    table.add_column("Status", style="red")
+    table.add_column("Conflict Markers", style="yellow")
+    
+    for file_info in conflicted_files:
+        file_path = file_info.get("file", "unknown")
+        status = file_info.get("status", "??")
+        markers = file_info.get("conflict_markers", 0)
+        
+        table.add_row(file_path, status, str(markers))
+    
+    console.print(table)
+
+def display_conflict_resolution(resolution: Dict):
+    """Display AI conflict resolution suggestions"""
+    console.print("🤖 AI Conflict Resolution Analysis", style="bold blue")
+    
+    strategy = resolution.get("resolution_strategy", "No strategy provided")
+    console.print(Panel(strategy, title="Resolution Strategy", border_style="blue"))
+    
+    explanation = resolution.get("explanation", "")
+    if explanation:
+        console.print(Panel(explanation, title="Detailed Explanation", border_style="cyan"))
+    
+    commands = resolution.get("recommended_commands", [])
+    if commands:
+        console.print("\n🔧 Recommended Commands:", style="bold")
+        for i, cmd in enumerate(commands, 1):
+            console.print(f"{i}. {cmd}", style="cyan")
+    
+    auto_resolvable = resolution.get("auto_resolvable", False)
+    if auto_resolvable:
+        console.print("\n✅ This conflict may be auto-resolvable", style="green")
+    else:
+        console.print("\n⚠️ Manual resolution required", style="yellow")
+
+def display_security_results(results: Dict):
+    """Display security analysis results"""
+    if "error" in results:
+        console.print(f"❌ {results['error']}", style="red")
+        return
+    
+    security_score = results.get("security_score", 0)
+    console.print(f"🔒 Security Score: {security_score}/100", style="bold")
+    
+    issues = results.get("security_issues", [])
+    if not issues:
+        console.print("✅ No security issues detected", style="green")
+        return
+    
+    table = Table(title="Security Issues")
+    table.add_column("Type", style="cyan")
+    table.add_column("Severity", style="red")
+    table.add_column("Description")
+    
+    for issue in issues:
+        severity_color = "red" if issue.get("severity") == "high" else "yellow" if issue.get("severity") == "medium" else "white"
+        table.add_row(
+            issue.get("type", "unknown"),
+            Text(issue.get("severity", "unknown"), style=severity_color),
+            issue.get("description", "No description")
+        )
+    
+    console.print(table)
+
+def display_performance_results(results: Dict):
+    """Display performance analysis results"""
+    if "error" in results:
+        console.print(f"❌ {results['error']}", style="red")
+        return
+    
+    console.print("⚡ Performance Analysis", style="bold")
+    
+    # Repository size info
+    repo_size = results.get("repository_size", {})
+    if repo_size:
+        console.print(f"📦 Total size: {repo_size.get('total_size_mb', 0):.1f} MB")
+        console.print(f"📁 Working tree: {repo_size.get('working_tree_size_mb', 0):.1f} MB")
+        console.print(f"🗄️ Git database: {repo_size.get('git_size_mb', 0):.1f} MB")
+    
+    # Tracking efficiency
+    tracking = results.get("tracking_efficiency", {})
+    if tracking:
+        ratio = tracking.get("tracking_ratio", 0)
+        console.print(f"📊 Tracking efficiency: {ratio:.1%}")
+        
+        untracked = tracking.get("untracked_files", 0)
+        if untracked > 0:
+            console.print(f"⚠️ Untracked files: {untracked}", style="yellow")
+    
+    # Branch health
+    branch_health = results.get("branch_health", {})
+    if branch_health:
+        total_branches = branch_health.get("total_branches", 0)
+        health = branch_health.get("health", "unknown")
+        health_color = "green" if health == "good" else "yellow" if health == "fair" else "red"
+        console.print(f"🌳 Branches: {total_branches} ({health})", style=health_color)
 
 if __name__ == "__main__":
     main()
