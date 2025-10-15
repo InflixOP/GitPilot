@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from typing import Dict, Optional
 
 import click
@@ -8,11 +9,15 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
+from rich.tree import Tree
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.markup import escape
 
 from .ai_engine import AIEngine
 from .context_analyzer import ContextAnalyzer
 from .git_executor import GitExecutor
 from .logger import GitPilotLogger
+from .repo_health import RepositoryHealthMonitor
 
 console = Console()
 
