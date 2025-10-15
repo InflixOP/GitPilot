@@ -1,8 +1,27 @@
-# GitPilot 
+# GitPilot 2.0 
 
-**GitPilot** is an intelligent AI-powered Git assistant that bridges the gap between natural language and Git commands. It's designed to make Git more accessible and efficient by allowing developers to express their intentions in plain English, while providing context-aware suggestions and safety checks.
+**GitPilot** is an intelligent AI-powered Git assistant that revolutionizes how developers interact with Git. Version 2.0 introduces advanced features including visual Git graphs, AI-powered conflict resolution, repository health monitoring, and semantic commit search—all designed to make Git more accessible, efficient, and intelligent.
 
-## 🌟 Key Features
+## 🚀 What's New in GitPilot 2.0
+
+### 🎯 Visual Git Operations
+- **Interactive Git Graph**: Visual representation of commit history with branch relationships
+- **Repository Health Monitor**: AI-powered analysis of repository health with actionable insights
+- **Advanced Analytics**: Comprehensive repository statistics and performance metrics
+
+### 🤖 Enhanced AI Capabilities
+- **AI Conflict Resolution**: Intelligent merge conflict analysis and resolution suggestions
+- **Semantic Commit Search**: Natural language search through commit history
+- **Repository Health Analysis**: AI-driven recommendations for repository optimization
+- **Security Scanning**: Automated detection of sensitive files and potential security issues
+
+### 📊 Advanced Git Tools
+- **Multi-format Git Graph**: Tree, table, and JSON output formats for commit visualization
+- **Performance Analytics**: Repository size analysis, tracking efficiency metrics
+- **Security Analysis**: Comprehensive security scanning with severity-based recommendations
+- **Branch Health Monitoring**: Intelligent branch management insights
+
+## 🌟 Core Features
 
 ### 🧠 AI-Powered Command Generation
 - **Natural Language Processing**: Converts plain English requests into precise Git commands
@@ -211,13 +230,35 @@ gitpilot "show commits from last week"
 gitpilot "show what changed in the last commit"
 ```
 
-## 🔧 Command Line Options
+## 🔧 Command Line Interface
 
+GitPilot 2.0 now features a comprehensive command-line interface with specialized commands:
+
+### Main Command
 ```bash
-gitpilot [OPTIONS] [QUERY]
+gitpilot [OPTIONS] [QUERY]  # Original natural language interface
 ```
 
-### Options
+### New Specialized Commands
+```bash
+# Repository health analysis
+gitpilot health [--detailed] [--model MODEL] [--format json|text]
+
+# Semantic commit search
+gitpilot search "search query" [--limit 50] [--model MODEL]
+
+# Visual Git graph
+gitpilot graph [--max-commits 20] [--format tree|table|json]
+
+# Conflict resolution assistance
+gitpilot conflicts [--model MODEL]
+
+# Repository analysis
+gitpilot analyze --security     # Security-focused analysis
+gitpilot analyze --performance  # Performance metrics
+```
+
+### Command Options
 - `--dry-run, -d`: Show what would be executed without running the command
 - `--explain, -e`: Show detailed explanation of the generated command
 - `--yes, -y`: Auto-confirm destructive operations
@@ -226,27 +267,22 @@ gitpilot [OPTIONS] [QUERY]
 - `--model, -m`: Select AI model (1: Gemini, 2: Llama 3.1 8B, 3: Llama 3.3 70B, 4: DeepSeek R1)
 - `--skip-model-selection`: Skip interactive model selection and use default
 
-### Examples with Options
+### Examples
 ```bash
-# Preview command without execution
-gitpilot "reset to last commit" --dry-run
+# Traditional natural language commands
+gitpilot "create a new branch for user authentication"
+gitpilot "show me recent commits" --model 2
 
-# Get explanation of the command
-gitpilot "merge feature branch" --explain
+# New specialized features
+gitpilot health --detailed --model 1
+gitpilot search "authentication fixes" --limit 30
+gitpilot graph --format table
+gitpilot conflicts --model 3
+gitpilot analyze --security
 
-# Auto-confirm destructive operation
-gitpilot "force push to remote" --yes
-
-# View command history
-gitpilot --history
-
-# Use specific AI models
-gitpilot --model 2 "show me recent commits"        # Groq Llama 3.1 8B
-gitpilot --model 3 "create a hotfix branch"         # Groq Llama 3.3 70B
-gitpilot --model 4 "help me resolve merge conflicts" # DeepSeek R1
-
-# Skip model selection for automation
-gitpilot --skip-model-selection "add all files"
+# Advanced usage
+gitpilot health --format json > health-report.json
+gitpilot graph --max-commits 50 --format json | jq '.commits[] | .message'
 ```
 
 ## ⚙️ Configuration
