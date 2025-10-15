@@ -151,3 +151,222 @@ class AIEngine:
                 "explanation": response,
                 "warning": "Failed to parse AI response"
             }
+
+    def resolve_merge_conflict(self, conflict_content: str, context: Dict, model_choice: str = "1") -> Dict:
+        """AI-powered merge conflict resolution."""
+        try:
+            prompt = f"""
+You are GitPilot, an expert Git assistant. A merge conflict has occurred. 
+Analyze the conflict and provide a resolution strategy.
+
+Conflict content:
+```
+{conflict_content[:2000]}  # Limit content size
+```
+
+Repository context:
+{self._format_context(context)}
+
+Provide a JSON response with:
+{{
+    "resolution_strategy": "detailed explanation of how to resolve",
+    "recommended_commands": ["list", "of", "git commands"],
+    "explanation": "step by step explanation",
+    "auto_resolvable": true/false
+}}
+"""
+            model_info = self.available_models.get(model_choice, self.available_models["1"])
+            if model_info["provider"] == "gemini":
+                model = genai.GenerativeModel(model_info["model"])
+                response = model.generate_content(prompt)
+                response_text = response.text if hasattr(response, 'text') else str(response)
+            else:
+                response = self.groq_client.chat.completions.create(
+                    model=model_info["model"],
+                    messages=[
+                        {"role": "system", "content": "You are GitPilot, an expert Git merge conflict resolver. Always respond with valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=1500
+                )
+                response_text = response.choices[0].message.content or ""
+            
+            self.logger.log_ai_query(f"Conflict resolution for {len(conflict_content)} chars", response_text, f"{model_info['provider']}-conflict")
+            return self._parse_conflict_response(response_text)
+        except Exception as e:
+            self.logger.log_error(f"Conflict resolution failed: {str(e)}")
+            return {
+                "resolution_strategy": "Manual resolution required",
+                "recommended_commands": ["git status", "git add <resolved-files>", "git commit"],
+                "explanation": f"AI resolution failed: {str(e)}. Please resolve manually.",
+                "auto_resolvable": False
+            }
+
+    def semantic_commit_search(self, search_query: str, commit_history: List[str], model_choice: str = "1") -> Dict:
+        """Search commits using natural language."""
+        try:
+            commits_text = "\n".join(commit_history[:50])  # Limit to recent commits
+            prompt = f"""
+You are GitPilot. Search through the commit history using natural language.
+
+Search query: "{search_query}"
+
+Commit history:
+```
+{commits_text}
+```
+
+Find commits that match the search intent. Provide a JSON response:
+{{
+    "matches": [
+        {{
+            "commit_sha": "abc1234",
+            "message": "commit message",
+            "relevance_score": 0.95,
+            "explanation": "why this matches"
+        }}
+    ],
+    "summary": "brief summary of search results"
+}}
+"""
+            model_info = self.available_models.get(model_choice, self.available_models["1"])
+            if model_info["provider"] == "gemini":
+                model = genai.GenerativeModel(model_info["model"])
+                response = model.generate_content(prompt)
+                response_text = response.text if hasattr(response, 'text') else str(response)
+            else:
+                response = self.groq_client.chat.completions.create(
+                    model=model_info["model"],
+                    messages=[
+                        {"role": "system", "content": "You are GitPilot, a semantic commit search assistant. Always respond with valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=1000
+                )
+                response_text = response.choices[0].message.content or ""
+            
+            self.logger.log_ai_query(search_query, response_text, f"{model_info['provider']}-search")
+            return self._parse_search_response(response_text)
+        except Exception as e:
+            self.logger.log_error(f"Semantic search failed: {str(e)}")
+            return {
+                "matches": [],
+                "summary": f"Search failed: {str(e)}"
+            }
+
+    def analyze_repository_health(self, repo_stats: Dict, model_choice: str = "1") -> Dict:
+        """AI-powered repository health analysis."""
+        try:
+            prompt = f"""
+You are GitPilot, a repository health expert. Analyze the repository statistics and provide health recommendations.
+
+Repository statistics:
+{json.dumps(repo_stats, indent=2)}
+
+Provide a JSON response:
+{{
+    "overall_health": "excellent|good|fair|poor",
+    "health_score": 85,
+    "issues": [
+        {{
+            "type": "large_files|security|performance|maintenance",
+            "severity": "high|medium|low",
+            "description": "issue description",
+            "recommendation": "how to fix"
+        }}
+    ],
+    "recommendations": ["list of general recommendations"],
+    "summary": "brief health summary"
+}}
+"""
+            model_info = self.available_models.get(model_choice, self.available_models["1"])
+            if model_info["provider"] == "gemini":
+                model = genai.GenerativeModel(model_info["model"])
+                response = model.generate_content(prompt)
+                response_text = response.text if hasattr(response, 'text') else str(response)
+            else:
+                response = self.groq_client.chat.completions.create(
+                    model=model_info["model"],
+                    messages=[
+                        {"role": "system", "content": "You are GitPilot, a repository health analyst. Always respond with valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=1200
+                )
+                response_text = response.choices[0].message.content or ""
+            
+            self.logger.log_ai_query("Repository health analysis", response_text, f"{model_info['provider']}-health")
+            return self._parse_health_response(response_text)
+        except Exception as e:
+            self.logger.log_error(f"Health analysis failed: {str(e)}")
+            return {
+                "overall_health": "unknown",
+                "health_score": 0,
+                "issues": [],
+                "recommendations": [],
+                "summary": f"Analysis failed: {str(e)}"
+            }
+
+    def _parse_conflict_response(self, response: str) -> Dict:
+        """Parse conflict resolution response."""
+        try:
+            import re
+            json_match = re.search(r'{.*}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+            return {
+                "resolution_strategy": response,
+                "recommended_commands": [],
+                "explanation": "Manual parsing of AI response",
+                "auto_resolvable": False
+            }
+        except:
+            return {
+                "resolution_strategy": "Manual resolution required",
+                "recommended_commands": [],
+                "explanation": "Failed to parse conflict resolution",
+                "auto_resolvable": False
+            }
+
+    def _parse_search_response(self, response: str) -> Dict:
+        """Parse semantic search response."""
+        try:
+            import re
+            json_match = re.search(r'{.*}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+            return {
+                "matches": [],
+                "summary": "No matches found"
+            }
+        except:
+            return {
+                "matches": [],
+                "summary": "Failed to parse search results"
+            }
+
+    def _parse_health_response(self, response: str) -> Dict:
+        """Parse health analysis response."""
+        try:
+            import re
+            json_match = re.search(r'{.*}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+            return {
+                "overall_health": "unknown",
+                "health_score": 0,
+                "issues": [],
+                "recommendations": [],
+                "summary": "Failed to parse health analysis"
+            }
+        except:
+            return {
+                "overall_health": "unknown",
+                "health_score": 0,
+                "issues": [],
+                "recommendations": [],
+                "summary": "Failed to parse health analysis"
+            }
