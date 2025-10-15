@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import google.generativeai as genai
 from groq import Groq

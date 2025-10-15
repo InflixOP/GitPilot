@@ -15,6 +15,7 @@ gitpilot/context_analyzer.py
 gitpilot/git_executor.py
 gitpilot/logger.py
 gitpilot/prompts.py
+gitpilot/repo_health.py
 gitpilot.egg-info/PKG-INFO
 gitpilot.egg-info/SOURCES.txt
 gitpilot.egg-info/dependency_links.txt
